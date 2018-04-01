@@ -1,8 +1,12 @@
 #!/bin/bash
 ## slack
 ## - slack api
-## version 0.0.1 - initial
+## version 0.0.2 - testing last period
 ## by <https://github.com/temptemp3>
+## see <https://github.com/temptemp3/slack.sh>
+## =standalone=
+## requires:
+## - jq
 ##################################################
 #!/bin/bash
 ## error
@@ -179,6 +183,22 @@ ts-now() {
  date +%s
 }
 #-------------------------------------------------
+ts-m24h() {
+ echo $(( $( date +%s ) - 86400 ))
+}
+#-------------------------------------------------
+ts-m1w() {
+ echo $(( $( date +%s ) - 86400 * 7 ))
+}
+#-------------------------------------------------
+ts-m30d() {
+ echo $(( $( date +%s ) - ( 86400 * 30 ) ))
+}
+#-------------------------------------------------
+ts-m1y() {
+ echo $(( $( date +%s ) - ( 86400 * 365 ) ))
+}
+#-------------------------------------------------
 slack-test-get-user-channels-history() { { local candidate_name ; candidate_name=${@} ; }
  get-user-channels-history $( get-member-id ${candidate_name} )
 }
@@ -197,12 +217,29 @@ get-user-channels-history() { { local candidate_id ; candidate_id="${1}" ; }
   slack-api-query
 }
 #-------------------------------------------------
+slack-channels-history-if-oldest-ts() { 
+ test ! "${oldest_ts}" || {
+  echo "&oldest=$( ${oldest_ts} )"
+ }
+}
+#-------------------------------------------------
+slack-channels-history-if-oldest-date() { 
+ test ! "${arg_oldest_date}" || {
+  echo "&oldest=$( ts--date ${arg_oldest_date} )"
+ }
+}
+#-------------------------------------------------
+slack-channels-history-if-oldest() { 
+ ${FUNCNAME}-ts
+ ${FUNCNAME}-date
+}
+#-------------------------------------------------
 slack-channels-history() { { local arg_oldest_date ; arg_oldest_date="${1}" ; }
   {
     local method_url
     method_url="https://slack.com/api/channels.history"
     local method_query
-    method_query="channel=${channel}&oldest=$( ts-date ${arg_oldest_date} )&pretty=1"
+    method_query="channel=${channel}$( ${FUNCNAME}-if-oldest )&pretty=1"
   }
   slack-api-call
 }
@@ -240,31 +277,35 @@ slack-test-for-each-channel() {
 }
 #-------------------------------------------------
 get-user-channel-history-ts() {
+ echo ${user_channel_history} \
+ | jq '.["ts"]' 
+}
+#-------------------------------------------------
+shopt -s expand_aliases
+alias setup-user-channel-history='
+{
   local user_channel_history
   user_channel_history=$( 
-   get-user-channels-history ${member_id} 
+    get-user-channels-history ${member_id} 
   )
-  test ! "${user_channel_history}" || {
-   echo ${user_channel_history} \
-   | jq '.["ts"]' 
-  }
 }
+'
 #-------------------------------------------------
 for-each-channel() { { local function_name ; function_name="${1}" ; }
  local channel
  for channel in $( get-channel-ids | sed -e 's/"//g' )
  do
-  slack-channels-history "2018-01-01" 1>/dev/null
+  slack-channels-history ${date_oldest} 1>/dev/null
   for member_id in ${member_ids}
   do
-  local user_channel_history
-  user_channel_history=$( 
-   get-user-channels-history ${member_id} 
-  )
-  test ! "${user_channel_history}" || {
-   echo ${user_channel_history} \
-   | jq '.["ts"]' 
-  }
+   setup-user-channel-history
+   test ! "${user_channel_history}" || {
+    ## replace with user channel history function name later  
+    {
+      echo ${user_channel_history} \
+      | jq 'if .["type"] == "message" and .["subtype"]|not then . else empty end' 
+    }
+   }
   done
  done
 }
@@ -380,8 +421,26 @@ slack-test() {
  commands
 }
 #-------------------------------------------------
-# - get channel history for user
-# - get channel history message by ts
+slack-testing() { { local ts_oldest_name ; ts_oldest_name="${1}" ; }
+ local ts_oldest
+ case ${ts_oldest_name} in
+  "last-24hours") 	ts_oldest="ts-m24h"	;;
+  "last-7days") 	ts_oldest="ts-m1w"	;;
+  "last-30days")	ts_oldest="ts-m30d" 	;;
+  "last-year") 		ts_oldest="ts-m1y"	;;
+  *) {
+   cat << EOF
+available options:
+- last-24hours
+- last-7days
+- last-30-days
+- last-year
+EOF
+   false
+  } ;;
+ esac
+ for-each-channel
+}
 #-------------------------------------------------
 slack() {
   #(
