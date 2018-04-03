@@ -1,7 +1,7 @@
 #!/bin/bash
 ## slack
 ## - slack api
-## version 0.0.2 - testing last period
+## version 0.0.2b - ubuntu testing
 ## by <https://github.com/temptemp3>
 ## see <https://github.com/temptemp3/slack.sh>
 ## =standalone=
@@ -225,7 +225,7 @@ slack-channels-history-if-oldest-ts() {
 #-------------------------------------------------
 slack-channels-history-if-oldest-date() { 
  test ! "${arg_oldest_date}" || {
-  echo "&oldest=$( ts--date ${arg_oldest_date} )"
+  echo "&oldest=$( ts-date ${arg_oldest_date} )"
  }
 }
 #-------------------------------------------------
@@ -291,7 +291,8 @@ alias setup-user-channel-history='
 }
 '
 #-------------------------------------------------
-for-each-channel() { { local function_name ; function_name="${1}" ; }
+for-each-channel() { { local date_oldest ; date_oldest="${1}" ; }
+ #{ local function_name ; function_name="${1}" ; }
  local channel
  for channel in $( get-channel-ids | sed -e 's/"//g' )
  do
@@ -421,7 +422,11 @@ slack-test() {
  commands
 }
 #-------------------------------------------------
-slack-testing() { { local ts_oldest_name ; ts_oldest_name="${1}" ; }
+slack-testing() { { local date_oldest ; date_oldest="${1}" ; }
+
+###---
+true || {
+ { local ts_oldest_name ; ts_oldest_name="${1}" ; }
  local ts_oldest
  case ${ts_oldest_name} in
   "last-24hours") 	ts_oldest="ts-m24h"	;;
@@ -438,15 +443,28 @@ available options:
 EOF
    false
   } ;;
- esac
- for-each-channel
+ esac 
+}
+###---
+
+ for-each-channel ${date_oldest}
+}
+#-------------------------------------------------
+slack_api_token=
+channel=
+member_ids=
+slack-initialize() {
+ . $( dirname ${0} )/slack-config.sh
 }
 #-------------------------------------------------
 slack() {
-  #(
-    . $( dirname ${0} )/$( basename ${0} .sh )-config.sh
-    commands
-  #)
+ ${FUNCNAME}-initialize
+ {
+   ${FUNCNAME}-channels-history
+   ${FUNCNAME}-channels-list
+   ${FUNCNAME}-users-list
+ } 1>/dev/null
+ commands
 }
 ##################################################
 if [ ! ]
