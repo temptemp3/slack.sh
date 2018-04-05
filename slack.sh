@@ -1,7 +1,7 @@
 #!/bin/bash
 ## slack
 ## - slack api
-## version 0.0.2b - ubuntu testing
+## version 0.0.2b.1 - ubuntu testing new requirements
 ## by <https://github.com/temptemp3>
 ## see <https://github.com/temptemp3/slack.sh>
 ## =standalone=
@@ -171,6 +171,16 @@ alias slack-api-query='
 } | tee temp-${FUNCNAME}
 '
 ##################################################
+floor() {
+ echo ${@} \
+ | sed -e 's/[.]*$//'
+}
+#-------------------------------------------------
+trim() {
+ echo ${@} \
+ | sed -e 's/"//g'
+}
+#-------------------------------------------------
 ts-date() { { local candidate_date ; candidate_date="${1}" ; }
  date --date="${candidate_date}" +%s
 }
@@ -291,24 +301,96 @@ alias setup-user-channel-history='
 }
 '
 #-------------------------------------------------
-for-each-channel() { { local date_oldest ; date_oldest="${1}" ; }
- #{ local function_name ; function_name="${1}" ; }
+for-each-channel-get-user-channel-history() { 
+
+ cat << EOF
+[
+EOF
  local channel
  for channel in $( get-channel-ids | sed -e 's/"//g' )
  do
   slack-channels-history ${date_oldest} 1>/dev/null
+  local member_id
   for member_id in ${member_ids}
   do
    setup-user-channel-history
    test ! "${user_channel_history}" || {
-    ## replace with user channel history function name later  
+    ## replace with user channel history function name later
     {
       echo ${user_channel_history} \
-      | jq 'if .["type"] == "message" and .["subtype"]|not then . else empty end' 
+      | jq '
+if .["type"] == "message" and .["subtype"]|not
+then
+.
+else
+ empty
+end
+'
     }
    }
   done
+ done | sed -e 's/^[}]$/},/'
+ cat << EOF
+{}
+]
+EOF
+
+ 
+}
+#-------------------------------------------------
+for-each-channel() { { local date_oldest ; date_oldest="${1}" ; }
+
+ ## depreciated may remove later
+ #{ local function_name ; function_name="${1}" ; }
+ 
+ local user_channel_history 
+ user_channel_history=$( 
+  ${FUNCNAME}-get-user-channel-history
+ )
+ echo ${user_channel_history} | tee temp-user-channel-history 1>&2
+
+ ## get list of unique users
+ local unique_users
+ unique_users=$(
+  echo ${user_channel_history} \
+  | jq '.[]["user"]' \
+  | sort \
+  | uniq \
+  | sed -e 's/null//g'
+ )
+ echo unique_users: ${unique_users} 1>&2
+
+ ## replace user w/ user real_name in user channel history
+ local user 
+ for user in ${unique_users} 
+ do
+  echo ${user} 1>&2
+  sed -i -e "s/${user}/$( slack-users-info ${user} real-name )/g" temp-user-channel-history
  done
+ cat temp-user-channel-history | jq '.'
+
+ ## get list of tss
+ local tss
+ tss=$(
+  echo ${user_channel_history} \
+  | jq '.[]["ts"]' \
+  | sort \
+  | uniq \
+  | sed -e 's/null//g'
+ )
+ echo tss: ${tss} 1>&2
+
+ ## replace ts w/ date
+ local ts
+ local ts_date
+ for ts in ${tss}
+ do
+  echo ${ts} 1>&2
+  ts_date=$( date --date="@$( trim ${ts} )" )
+  echo ${ts_date} 1>&2
+  sed -i -e "s/${ts}/\"${ts_date}\"/g" temp-user-channel-history
+ done
+ cat temp-user-channel-history | jq '.'
 }
 #-------------------------------------------------
 slack-channels-list() {
@@ -342,6 +424,31 @@ slack-query() { { local api_method ; api_method="${1}" ; local queary ; query="$
       jq "${query}" ${input_json}
     }
   }
+}
+#-------------------------------------------------
+slack-users-info() { { local user ; user="${1}" ; local field ; field="${2}" ; }
+  test "${user}"
+  {
+    local method_url
+    method_url="https://slack.com/api/users.info"
+    local method_query
+    method_query="user=$( trim ${user} )&pretty=1"
+  }
+  local users_info
+  users_info=$(
+   slack-api-call
+  )
+  case ${field} in 
+   ts) {
+    echo ${users_info} | jq '.["user"]["real_name"]'
+   } ;;
+   real-name) {
+    echo ${users_info} | jq '.["user"]["real_name"]'
+   } ;;
+   *) {
+    echo ${users_info}
+   } ;;
+  esac
 }
 #-------------------------------------------------
 slack-users-list() {
@@ -422,8 +529,29 @@ slack-test() {
  commands
 }
 #-------------------------------------------------
-slack-testing() { { local date_oldest ; date_oldest="${1}" ; }
+slack-testing-date-oldest() { { local date_oldest ; date_oldest="${1}" ; }
+  {
+    for-each-channel ${date_oldest}
+  }
+}
+#-------------------------------------------------
+slack-testing-help() {
+ cat << EOF
+slack-testing
 
+OPTIONS
+
+	date-oldest yyyy-mm-dd
+
+	- get channel histories between now and oldest date
+
+EOF
+}
+#-------------------------------------------------
+slack-testing() { { local date_oldest ; date_oldest="${1}" ; }
+ commands
+ return
+ ## depreciated may remove later
 ###---
 true || {
  { local ts_oldest_name ; ts_oldest_name="${1}" ; }
@@ -446,8 +574,6 @@ EOF
  esac 
 }
 ###---
-
- for-each-channel ${date_oldest}
 }
 #-------------------------------------------------
 slack_api_token=
