@@ -2,6 +2,8 @@
 ## shed
 ## - export workdspace slack history
 ## version 0.0.1 - initial
+## requires:
+## - slack.sh
 ##################################################
 . $( dirname ${0} )/slack.sh &>/dev/null
 ##################################################
