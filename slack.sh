@@ -1,7 +1,7 @@
 #!/bin/bash
 ## slack
 ## - slack api
-## version 0.0.3 - export shed
+## version 0.0.4 - fix list-available-commands
 ## by <https://github.com/temptemp3>
 ## see <https://github.com/temptemp3/slack.sh>
 ## =standalone=
@@ -92,7 +92,7 @@ EOF
 #!/bin/bash
 ## commands (alias)
 ## - function command cli adapter
-## version 0.0.6 - enable alias expansion for standalone use
+## version 0.0.6* - enable alias expansion for standalone use
 ## see <https://github.com/temptemp3/sh2>
 ##################################################
 list-available-commands() { { local function_name ; function_name="${1}" ; local filter_include ; filter_include="${2}" ; }
@@ -104,6 +104,7 @@ list-available-commands() { { local function_name ; function_name="${1}" ; local
    | sed -e "s/${function_name}-//" \
    | xargs -I {} echo "- {}" \
    | sed  "1d" \
+   | sed  "\$d" \
    | grep -e "${filter_include}"
 }
 shopt -s expand_aliases

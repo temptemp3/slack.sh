@@ -1,0 +1,70 @@
+<pre>
+
+  / ____| |  | |  ____|  __ \ 
+ | (___ | |__| | |__  | |  | |
+  \___ \|  __  |  __| | |  | |
+  ____) | |  | | |____| |__| |
+ |_____/|_|  |_|______|_____/ 
+ slack.history.exporter.daily
+</pre>
+
+<p>SHED(1)</p>
+
+<h2>NAME</h2>
+
+<p>shed - export daily slack channel history</p>
+
+<h2>SYNOPSIS</h2>
+
+<p><strong>shed</strong> subcommand args </p>
+
+<h2>DESCRIPTION</h2>
+
+<p><strong>shed</strong> exports daily slack channel history using slack.sh</p>
+
+<h2>SUBCOMMANDS</h2>
+
+<p>date-oldest yyyy-mm-dd</p>
+
+<ul>
+<li>export channel histories between yyyy-mm-dd and now</li>
+</ul>
+
+<p>help</p>
+
+<ul>
+<li>show command help</li>
+</ul>
+
+<h2>EXAMPLES</h2>
+
+<p>Export channel history since 8 Apr 2018</p>
+
+<p><code>shed date-oldest 2018-04-08</code> </p>
+
+<p>Get help</p>
+
+<p><code>shed help</code></p>
+
+<h2>INSTALLATION</h2>
+
+<p>Add alias <code>shed</code> such as <code>alias shed='bash /path/to/shed.sh/shed.sh'</code>  <em>optional</em></p>
+
+<p>Settup environment in <code>slack-config.sh</code> such as</p>
+
+<p><code>
+{ <br />
+  local slack_api_token <br />
+  local channel <br />
+  local member_ids <br />
+  slack_api_token="SLACK_API_LEGACY_TOKEN_FOR_TARGET_WORSPACE" <br />
+  channel= <br />
+  member_ids="\"DUMMYID1\" \"DUMMYID2\" \"DUMMYID3\"" <br />
+}
+</code></p>
+
+<h2>AUTHOR</h2>
+
+<p>Nicholas M Shellabarger &lt;<a href="https://github.com/temptemp3">https://github.com/temptemp3</a>&gt;</p>
+
+<p>SHED(1)</p>
