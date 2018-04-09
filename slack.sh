@@ -1,7 +1,7 @@
 #!/bin/bash
 ## slack
 ## - slack api
-## version 0.0.2b.1 - ubuntu testing new requirements
+## version 0.0.3 - export shed
 ## by <https://github.com/temptemp3>
 ## see <https://github.com/temptemp3/slack.sh>
 ## =standalone=
@@ -527,53 +527,6 @@ get-member-info-by-id() { { local candidate_id ; candidate_id=${1} ; }
 #-------------------------------------------------
 slack-test() {
  commands
-}
-#-------------------------------------------------
-slack-testing-date-oldest() { { local date_oldest ; date_oldest="${1}" ; }
-  {
-    for-each-channel ${date_oldest}
-  }
-}
-#-------------------------------------------------
-slack-testing-help() {
- cat << EOF
-slack-testing
-
-OPTIONS
-
-	date-oldest yyyy-mm-dd
-
-	- get channel histories between now and oldest date
-
-EOF
-}
-#-------------------------------------------------
-slack-testing() { { local date_oldest ; date_oldest="${1}" ; }
- commands
- return
- ## depreciated may remove later
-###---
-true || {
- { local ts_oldest_name ; ts_oldest_name="${1}" ; }
- local ts_oldest
- case ${ts_oldest_name} in
-  "last-24hours") 	ts_oldest="ts-m24h"	;;
-  "last-7days") 	ts_oldest="ts-m1w"	;;
-  "last-30days")	ts_oldest="ts-m30d" 	;;
-  "last-year") 		ts_oldest="ts-m1y"	;;
-  *) {
-   cat << EOF
-available options:
-- last-24hours
-- last-7days
-- last-30-days
-- last-year
-EOF
-   false
-  } ;;
- esac 
-}
-###---
 }
 #-------------------------------------------------
 slack_api_token=
