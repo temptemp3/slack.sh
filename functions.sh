@@ -1,6 +1,7 @@
 #!/bin/bash
 ## functions
-## version 0.0.1 - initial
+## - slack.sh function
+## version 0.0.2 - user channel history debug
 ##################################################
 #!/bin/bash
 ## error
@@ -333,6 +334,11 @@ EOF
  
 }
 #-------------------------------------------------
+# for-each-channel
+# - do something on each channel
+# + currently fectching user channel history
+# version 0.0.2 - user channel history debug
+#-------------------------------------------------
 for-each-channel() { { local date_oldest ; date_oldest="${1}" ; }
 
  ## depreciated may remove later
@@ -362,7 +368,7 @@ for-each-channel() { { local date_oldest ; date_oldest="${1}" ; }
   echo ${user} 1>&2
   sed -i -e "s/${user}/$( slack-users-info ${user} real-name )/g" temp-user-channel-history
  done
- cat temp-user-channel-history | jq '.'
+ cat temp-user-channel-history | jq '.' 1>&2
 
  ## get list of tss
  local tss
