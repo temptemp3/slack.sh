@@ -2,6 +2,10 @@
 ## functions
 ## - slack.sh function
 ## version 0.0.2 - user channel history debug
+## to do:
+## + migrate to sh2
+## ++ error
+## ++ commands
 ##################################################
 #!/bin/bash
 ## error
