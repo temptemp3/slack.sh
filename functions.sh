@@ -1,7 +1,7 @@
 #!/bin/bash
 ## functions
 ## - slack.sh function
-## version 0.0.2 - user channel history debug
+## version 0.0.3 - export api
 ## to do:
 ## + migrate to sh2
 ## ++ error
@@ -186,17 +186,7 @@ alias command-loop='
  done
 '
 ##################################################
-shopt -s expand_aliases
-alias slack-api-call='
-{
-  curl --silent --url "${method_url}?token=${slack_api_token}&${method_query}" 
-} | tee temp-${FUNCNAME}
-'
-alias slack-api-query='
-{
-  slack-query "${api_method}" "${query}"
-} | tee temp-${FUNCNAME}
-'
+. $( find $( dirname ${0} ) -name functions-api.sh )
 ##################################################
 floor() {
  echo ${@} \
@@ -240,20 +230,6 @@ slack-test-get-user-channels-history() { { local candidate_name ; candidate_name
  get-user-channels-history $( get-member-id ${candidate_name} )
 }
 #-------------------------------------------------
-get-user-channels-history() { { local candidate_id ; candidate_id="${1}" ; }
-  test "${candidate_id}" || {
-   error "empty member id" "${FUNCNAME}" "${LINENO}"
-   false
-  }
-  { 
-    local api_method
-    api_method="channels.history"
-    local query
-    query=".[\"messages\"][]|if .[\"user\"] == ${candidate_id} then . else empty end"
-  }
-  slack-api-query
-}
-#-------------------------------------------------
 slack-channels-history-if-oldest-ts() { 
  test ! "${oldest_ts}" || {
   echo "&oldest=$( ${oldest_ts} )"
@@ -271,42 +247,12 @@ slack-channels-history-if-oldest() {
  ${FUNCNAME}-date
 }
 #-------------------------------------------------
-slack-channels-history() { { local arg_oldest_date ; arg_oldest_date="${1}" ; }
-  {
-    local method_url
-    method_url="https://slack.com/api/channels.history"
-    local method_query
-    method_query="channel=${channel}$( ${FUNCNAME}-if-oldest )&pretty=1"
-  }
-  slack-api-call
-}
-#-------------------------------------------------
 slack-test-get-channel-names() {
  get-channel-names
 }
 #-------------------------------------------------
-get-channel-names() {
-  { 
-    local api_method
-    api_method="channels.list"
-    local query
-    query='.["channels"][]["name"]'
-  }
-  slack-api-query
-}
-#-------------------------------------------------
 slack-test-get-channel-ids() {
  get-channel-ids
-}
-#-------------------------------------------------
-get-channel-ids() {
-  { 
-    local api_method
-    api_method="channels.list"
-    local query
-    query='.["channels"][]["id"]'
-  }
-  slack-api-query
 }
 #-------------------------------------------------
 slack-test-for-each-channel() {
@@ -425,16 +371,6 @@ for-each-channel() { { local date_oldest ; date_oldest="${1}" ; }
  cat temp-user-channel-history | jq '.'
 }
 #-------------------------------------------------
-slack-channels-list() {
-  {
-    local method_url
-    method_url="https://slack.com/api/channels.list"
-    local method_query
-    method_query="pretty=1"
-  }
-  slack-api-call
-}
-#-------------------------------------------------
 slack-channels() {
  commands
 }
@@ -456,41 +392,6 @@ slack-query() { { local api_method ; api_method="${1}" ; local queary ; query="$
       jq "${query}" ${input_json}
     }
   }
-}
-#-------------------------------------------------
-slack-users-info() { { local user ; user="${1}" ; local field ; field="${2}" ; }
-  test "${user}"
-  {
-    local method_url
-    method_url="https://slack.com/api/users.info"
-    local method_query
-    method_query="user=$( trim ${user} )&pretty=1"
-  }
-  local users_info
-  users_info=$(
-   slack-api-call
-  )
-  case ${field} in 
-   ts) {
-    echo ${users_info} | jq '.["user"]["real_name"]'
-   } ;;
-   real-name) {
-    echo ${users_info} | jq '.["user"]["real_name"]'
-   } ;;
-   *) {
-    echo ${users_info}
-   } ;;
-  esac
-}
-#-------------------------------------------------
-slack-users-list() {
-  {
-    local method_url
-    method_url="https://slack.com/api/users.list"
-    local method_query
-    method_query="pretty=1"
-  }
-  slack-api-call
 }
 #-------------------------------------------------
 slack-users() {
@@ -519,42 +420,12 @@ slack-test-get-member-id-by-profile-display-name() { { local candidate_name ; ca
  get-member-id-by-profile-display-name "${candidate_name}"
 }
 #-------------------------------------------------
-get-member-id-by-profile-display-name() { { local candidate_name ; candidate_name=${@} ; }
-  { 
-    local api_method
-    api_method="users.list"
-    local query
-    query=".[\"members\"][]|if .[\"profile\"][\"display_name\"] == \"${candidate_name}\" then .[\"id\"] else empty end"
-  }
-  slack-api-query
-}
-#-------------------------------------------------
 slack-test-get-member-id-by-real-name() { { local candidate_name ; candidate_name=${@} ; }
  get-member-id-by-real-name "${candidate_name}"
 }
 #-------------------------------------------------
-get-member-id-by-real-name() { { local candidate_name ; candidate_name=${@} ; }
-  { 
-    local api_method
-    api_method="users.list"
-    local query
-    query=".[\"members\"][]|if .[\"real_name\"] == \"${candidate_name}\" then .[\"id\"] else empty end"
-  }
-  slack-api-query
-}
-#-------------------------------------------------
 slack-test-get-member-info-by-id() { { local candidate_id ; candidate_id=${1} ; }
  get-member-info-by-id ${candidate_id}
-}
-#-------------------------------------------------
-get-member-info-by-id() { { local candidate_id ; candidate_id=${1} ; }
-  { 
-    local api_method
-    api_method="users.list"
-    local query
-    query=".[\"members\"][]|if .[\"id\"] == \"${candidate_id}\" then . else empty end"
-  }
-  slack-api-query
 }
 #-------------------------------------------------
 slack-test() {
@@ -564,8 +435,45 @@ slack-test() {
 slack_api_token=
 channel=
 member_ids=
-slack-initialize() {
+output_format=
+slack-initialize-output-format() {
+ test "${output_format}" && {
+  test ! "${debug}" = "true" || {
+   cecho green using config output_format "'${output_format}'"
+  }
+ true
+ } || {
+ test -f "set-output" && {
+  output_format=$( cat set-output )
+ true
+ } || {
+  output_format="json"
+ }
+ }
+}
+debug=
+slack-initialize-debug() {
+ test "${debug}" && { 
+  test ! "${debug}" = "true" || {
+   cecho green using config debug "'${debug}'"
+  }
+ true
+ } || {
+ test -f "set-debug" && {
+  debug=$( cat set-debug )
+ true 
+ } || {
+  debug="false"
+ }
+ }
+}
+slack-initialize-config() {
  . $( dirname ${0} )/slack-config.sh
+}
+slack-initialize() {
+ ${FUNCNAME}-config
+ ${FUNCNAME}-output-format 
+ ${FUNCNAME}-debug
 }
 #-------------------------------------------------
 slack() {
