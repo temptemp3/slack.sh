@@ -2,3 +2,7 @@
 	path = docs
 	url = https://github.com/temptemp3/shed-docs2.git
 	branch = html
+[submodule "sh2"]
+	path = sh2
+	url = https://github.com/temptemp3/sh2.git
+	branch = working
