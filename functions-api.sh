@@ -1,22 +1,25 @@
 #!/bin/bash
 ## functions-api
 ## - slack api functions
-## version 0.0.2 - allow insecure curl request option in slack-api-call
+## version 0.0.3 - temp in cache
+##################################################
+## version 0.0.2 - temp in cache
 shopt -s expand_aliases
 alias slack-api-call='
 {
   _() {
    curl --url "${method_url}?token=${slack_api_token}&${method_query}" --silent $( test ! "${allow_insecure}" = "true" || echo "--insecure" )
   }
-  _ | tee temp-${FUNCNAME}
+  _ | tee ${cache}/temp-${FUNCNAME}
 } 
 '
+## version 0.0.2 - temp in cache
 alias slack-api-query='
 { 
   _() {
    slack-query "${api_method}" "${query}"
   }
-  _ | tee temp-${FUNCNAME}
+  _ | tee ${cache}/temp-${FUNCNAME}
 }
 '
 ##################################################
