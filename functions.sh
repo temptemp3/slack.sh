@@ -1,7 +1,7 @@
 #!/bin/bash
 ## functions
 ## - slack.sh function
-## version 0.0.3 - export api
+## version 0.1.0 - post testing integration
 ## to do:
 ## + migrate to sh2
 ## ++ error
@@ -186,8 +186,21 @@ alias command-loop='
  done
 '
 ##################################################
+. $( find $( dirname ${0} ) -name aliases.sh )
+. $( find $( dirname ${0} )/*/aliases -name sed.sh )
 . $( find $( dirname ${0} ) -name functions-api.sh )
+. $( find $( dirname ${0} ) -name functions-test.sh )
+. $( find $( dirname ${0} ) -name functions-for-each-channel.sh )
+. $( find $( dirname ${0} ) -name functions-channels.sh )
+. $( find $( dirname ${0} ) -name functions-ts.sh )
+. $( find $( dirname ${0} ) -name functions-entry.sh )
 ##################################################
+escape-slash() {
+  {
+    echo ${@} 
+  } | sed-escape-slash
+}
+#-------------------------------------------------
 floor() {
  echo ${@} \
  | sed -e 's/[.]*$//'
@@ -198,185 +211,105 @@ trim() {
  | sed -e 's/"//g'
 }
 #-------------------------------------------------
-ts-date() { { local candidate_date ; candidate_date="${1}" ; }
- date --date="${candidate_date}" +%s
-}
-#-------------------------------------------------
-ts-today() {
- date --date="$( date +%F )" +%s
-}
-#-------------------------------------------------
-ts-now() {
- date +%s
-}
-#-------------------------------------------------
-ts-m24h() {
- echo $(( $( date +%s ) - 86400 ))
-}
-#-------------------------------------------------
-ts-m1w() {
- echo $(( $( date +%s ) - 86400 * 7 ))
-}
-#-------------------------------------------------
-ts-m30d() {
- echo $(( $( date +%s ) - ( 86400 * 30 ) ))
-}
-#-------------------------------------------------
-ts-m1y() {
- echo $(( $( date +%s ) - ( 86400 * 365 ) ))
-}
-#-------------------------------------------------
-slack-test-get-user-channels-history() { { local candidate_name ; candidate_name=${@} ; }
- get-user-channels-history $( get-member-id ${candidate_name} )
-}
-#-------------------------------------------------
-slack-channels-history-if-oldest-ts() { 
- test ! "${oldest_ts}" || {
-  echo "&oldest=$( ${oldest_ts} )"
- }
-}
-#-------------------------------------------------
-slack-channels-history-if-oldest-date() { 
- test ! "${arg_oldest_date}" || {
-  echo "&oldest=$( ts-date ${arg_oldest_date} )"
- }
-}
-#-------------------------------------------------
-slack-channels-history-if-oldest() { 
- ${FUNCNAME}-ts
- ${FUNCNAME}-date
-}
-#-------------------------------------------------
-slack-test-get-channel-names() {
- get-channel-names
-}
-#-------------------------------------------------
-slack-test-get-channel-ids() {
- get-channel-ids
-}
-#-------------------------------------------------
-slack-test-for-each-channel() {
- for-each-channel
-}
-#-------------------------------------------------
 get-user-channel-history-ts() {
  echo ${user_channel_history} \
  | jq '.["ts"]' 
 }
 #-------------------------------------------------
-shopt -s expand_aliases
-alias setup-user-channel-history='
-{
-  local user_channel_history
-  user_channel_history=$( 
-    get-user-channels-history ${member_id} 
-  )
-}
-'
-#-------------------------------------------------
-for-each-channel-get-user-channel-history() { 
+# version 0.0.2 - using channel_ids
+for-each-channel-get-user-channel-history-payload() { 
 
- cat << EOF
-[
-EOF
  local channel
- for channel in $( get-channel-ids | sed -e 's/"//g' )
+ for channel in ${channel_ids}
  do
-  slack-channels-history ${date_oldest} 1>/dev/null
+
+  cecho yellow channel: ${channel} 1>&2 
+
+  { # initialize channel history
+    slack-channels-history ${date_oldest} # > temp-slack-channels-history
+  } 1>/dev/null
+
+  for-each-channel-get-user-channel-history-payload-on-empty-channel # continue on empty channel history
+
+  ## test has more true case 
+
+  cecho yellow member_ids: ${member_ids}
+ 
   local member_id
   for member_id in ${member_ids}
   do
-   setup-user-channel-history
-   test ! "${user_channel_history}" || {
-    ## replace with user channel history function name later
-    {
-      echo ${user_channel_history} \
-      | jq '
-if .["type"] == "message" and .["subtype"]|not
-then
-.
-else
- empty
-end
-'
-    }
-   }
-  done
- done | sed -e 's/^[}]$/},/'
- cat << EOF
-{}
-]
-EOF
 
- 
+   cecho yellow member_id: ${member_id} 1>&2
+
+   setup-user-channel-history # ${user_channel_history} > temp-get-user-channels-history
+   
+   for-each-channel-get-user-channel-history-payload-on-empty-user-channel # continue on empty user channel history
+
+   echo ${user_channel_history} | jq '.' 
+
+  done
+
+ done 
+
+}
+#-------------------------------------------------
+# version 0.0.2 - caching
+for-each-channel-get-user-channel-history() {
+  cecho green [ begin ${FUNCNAME}
+  {
+    #cache \
+    #"${cache}/${FUNCNAME}" \
+    "${FUNCNAME}-payload"
+  }
+
+  cecho green end of ${FUNCNAME} ]
 }
 #-------------------------------------------------
 # for-each-channel
 # - do something on each channel
 # + currently fectching user channel history
-# version 0.0.2 - user channel history debug
+# version 0.0.5 - inherit channel ids
 #-------------------------------------------------
-for-each-channel() { { local date_oldest ; date_oldest="${1}" ; }
+for-each-channel() { #{ local date_oldest ; date_oldest="${1}" ; local channel_ids ; channel_ids=${@:2} ; { test "${channel_ids}" || { channel_ids="all" ; } ; } ; }
 
- ## depreciated may remove later
- #{ local function_name ; function_name="${1}" ; }
+ { # debug
+  cecho green in ${FUNCNAME}
+  cecho yellow date_oldest: ${date_oldest}
+  cecho yellow channel_ids: ${channel_ids}
+ } 
+
+ setup-channel-ids # ${channel_ids}
+
+ setup-global-user-channel-history # ${user_channel_history} > temp-user-channel-history
+
+ # test empty user channel history
+
+ { # convert messages to array
+   sed -e 's/^}/},/' -e '$s/.*/}]/' -e '1s/.*/[{/' ${cache}/temp-user-channel-history  
+ } > ${cache}/temp-user-channel-history-copy
  
- local user_channel_history 
- user_channel_history=$( 
-  ${FUNCNAME}-get-user-channel-history
- )
- echo ${user_channel_history} | tee temp-user-channel-history 1>&2
+ ${FUNCNAME}-convert # (user ids, tss)
 
- ## get list of unique users
- local unique_users
- unique_users=$(
-  echo ${user_channel_history} \
-  | jq '.[]["user"]' \
-  | sort \
-  | uniq \
-  | sed -e 's/null//g'
- )
- echo unique_users: ${unique_users} 1>&2
+ ${FUNCNAME}-output ${output_format}
 
- ## replace user w/ user real_name in user channel history
- local user 
- for user in ${unique_users} 
- do
-  echo ${user} 1>&2
-  sed -i -e "s/${user}/$( slack-users-info ${user} real-name )/g" temp-user-channel-history
- done
- cat temp-user-channel-history | jq '.' 1>&2
-
- ## get list of tss
- local tss
- tss=$(
-  echo ${user_channel_history} \
-  | jq '.[]["ts"]' \
-  | sort \
-  | uniq \
-  | sed -e 's/null//g'
- )
- echo tss: ${tss} 1>&2
-
- ## replace ts w/ date
- local ts
- local ts_date
- for ts in ${tss}
- do
-  echo ${ts} 1>&2
-  ts_date=$( date --date="@$( trim ${ts} )" )
-  echo ${ts_date} 1>&2
-  sed -i -e "s/${ts}/\"${ts_date}\"/g" temp-user-channel-history
- done
- cat temp-user-channel-history | jq '.'
-}
-#-------------------------------------------------
-slack-channels() {
- commands
 }
 #-------------------------------------------------
 method-slug() { { local candidate_method ; candidate_method="${1}" ; }
  echo ${candidate_method} | sed -e 's/[.]/-/g'
+}
+#-------------------------------------------------
+get-member-id() { { local candidate_name ; candidate_name=${@} ; }
+
+ test ! "$( get-member-id-by-real-name ${candidate_name} )" || {
+  get-member-id-by-real-name "${candidate_name}" 
+  return
+ }
+
+ test ! "$( get-member-id-by-profile-display-name ${candidate_name} )" || {
+  get-member-id-by-profile-display-name "${candidate_name}"
+  return
+ }
+
 }
 #-------------------------------------------------
 slack-query() { { local api_method ; api_method="${1}" ; local queary ; query="${2}" ; }
@@ -397,107 +330,6 @@ slack-query() { { local api_method ; api_method="${1}" ; local queary ; query="$
 slack-users() {
  commands
 }
-#-------------------------------------------------
-slack-test-get-member-id() { { local candidate_name ; candidate_name=${@} ; }
- get-member-id "${candidate_name}"
-}
-#-------------------------------------------------
-get-member-id() { { local candidate_name ; candidate_name=${@} ; }
-
- test ! "$( get-member-id-by-real-name ${candidate_name} )" || {
-  get-member-id-by-real-name "${candidate_name}" 
-  return
- }
-
- test ! "$( get-member-id-by-profile-display-name ${candidate_name} )" || {
-  get-member-id-by-profile-display-name "${candidate_name}"
-  return
- }
-
-}
-#-------------------------------------------------
-slack-test-get-member-id-by-profile-display-name() { { local candidate_name ; candidate_name=${@} ; }
- get-member-id-by-profile-display-name "${candidate_name}"
-}
-#-------------------------------------------------
-slack-test-get-member-id-by-real-name() { { local candidate_name ; candidate_name=${@} ; }
- get-member-id-by-real-name "${candidate_name}"
-}
-#-------------------------------------------------
-slack-test-get-member-info-by-id() { { local candidate_id ; candidate_id=${1} ; }
- get-member-info-by-id ${candidate_id}
-}
-#-------------------------------------------------
-slack-test() {
- commands
-}
-#-------------------------------------------------
-slack_api_token=
-channel=
-member_ids=
-output_format=
-slack-initialize-output-format() {
- test "${output_format}" && {
-  test ! "${debug}" = "true" || {
-   cecho green using config output_format "'${output_format}'"
-  }
- true
- } || {
- test -f "set-output" && {
-  output_format=$( cat set-output )
- true
- } || {
-  output_format="json"
- }
- }
-}
-debug=
-slack-initialize-debug() {
- test "${debug}" && { 
-  test ! "${debug}" = "true" || {
-   cecho green using config debug "'${debug}'"
-  }
- true
- } || {
- test -f "set-debug" && {
-  debug=$( cat set-debug )
- true 
- } || {
-  debug="false"
- }
- }
-}
-slack-initialize-config() {
- . $( dirname ${0} )/slack-config.sh
-}
-slack-initialize() {
- ${FUNCNAME}-config
- ${FUNCNAME}-output-format 
- ${FUNCNAME}-debug
-}
-#-------------------------------------------------
-slack() {
- ${FUNCNAME}-initialize
- {
-   ${FUNCNAME}-channels-history
-   ${FUNCNAME}-channels-list
-   ${FUNCNAME}-users-list
- } 1>/dev/null
- commands
-}
-#-------------------------------------------------
-#functions() {
-# true
-#}
-##################################################
-#if [ ${#} -eq 0 ] 
-#then
-# true
-#else
-# exit 1 # wrong args
-#fi
-##################################################
-#functions
 ##################################################
 ## generated by create-stub2.sh v0.1.0
 ## on Tue, 17 Apr 2018 23:11:12 +0900

@@ -1,7 +1,7 @@
 #!/bin/bash
 ## functions-api
 ## - slack api functions
-## version 0.0.3 - temp in cache
+## version 0.1.0 - post testing integration
 ##################################################
 ## version 0.0.2 - temp in cache
 shopt -s expand_aliases
@@ -56,29 +56,7 @@ slack-users-list() {
   slack-api-call
 }
 #-------------------------------------------------
-slack-users-info() { { local user ; user="${1}" ; }
-  test "${user}"
-  {
-    local method_url
-    method_url="https://slack.com/api/users.info"
-    local method_query
-    method_query="user=$( trim ${user} )&pretty=1"
-  }
-  slack-api-call
-}
-#-------------------------------------------------
-slack-users-info() { { local user ; user="${1}" ; local field ; field="${2}" ; }
-  test "${user}"
-  {
-    local method_url
-    method_url="https://slack.com/api/users.info"
-    local method_query
-    method_query="user=$( trim ${user} )&pretty=1"
-  }
-  local users_info
-  users_info=$(
-   slack-api-call
-  )
+slack-users-info-case() { 
   case ${field} in 
    ts) {
     echo ${users_info} | jq '.["user"]["real_name"]'
@@ -91,10 +69,34 @@ slack-users-info() { { local user ; user="${1}" ; local field ; field="${2}" ; }
    } ;;
   esac
 }
+#-------------------------------------------------
+# version 0.0.2 - caching
+slack-users-info() { { local user ; user="${1}" ; local field ; field="${2}" ; }
+
+  test "${user}"
+
+  {
+    local method_url
+    method_url="https://slack.com/api/users.info"
+    local method_query
+    method_query="user=$( trim ${user} )&pretty=1"
+  }
+
+  local users_info
+  users_info=$(
+   slack-api-call
+  )
+
+  {
+    #cache \
+    #"${cache}/${FUNCNAME}-${user}-${field}" \
+    "${FUNCNAME}-case"
+  }
+}
 ##################################################
 get-user-channels-history() { { local candidate_id ; candidate_id="${1}" ; }
   test "${candidate_id}" || {
-   error "empty member id" "${funcname}" "${lineno}"
+   error "empty member id" "${FUNCNAME}" "${LINENO}"
    false
   }
   { 
@@ -102,12 +104,14 @@ get-user-channels-history() { { local candidate_id ; candidate_id="${1}" ; }
     api_method="channels.history"
     local query
     query="
-.[\"messages\"][]|
-if .[\"user\"] == ${candidate_id} 
+.messages[]|
+if .user == ${candidate_id} 
 then 
- . + {\"channel\":\"${channel}\"}
+(
+  . + {\"channel\":\"${channel}\"}
+)
 else 
- empty 
+empty
 end
 "
   }

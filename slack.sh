@@ -1,11 +1,7 @@
 #!/bin/bash
 ## slack
 ## - slack api
-## version 0.0.5 - export functions
-## by <https://github.com/temptemp3>
-## see <https://github.com/temptemp3/slack.sh>
-## requires:
-## - jq
+## version 0.1.0 - post testing integration
 ##################################################
 . $( dirname ${0} )/functions.sh
 ##################################################
