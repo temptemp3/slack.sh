@@ -1,7 +1,7 @@
 #!/bin/bash
 ## functions-test
 ## - functions for testing
-## version 0.0.1 - initial
+## version 0.0.2 - test suite initial
 ##################################################
 slack-test-get-channel-names() {
  get-channel-names
@@ -33,6 +33,13 @@ slack-test-get-member-info-by-id() { { local candidate_id ; candidate_id=${1} ; 
 #-------------------------------------------------
 slack-test-get-user-channels-history() { { local candidate_name ; candidate_name=${@} ; }
  get-user-channels-history $( get-member-id ${candidate_name} )
+}
+#-------------------------------------------------
+slack-test-suite() {
+
+ cecho green testing get-channel-ids ...
+ test "$( slack-test get-channel-ids )" 
+
 }
 #-------------------------------------------------
 slack-test() {

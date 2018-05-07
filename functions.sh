@@ -1,7 +1,7 @@
 #!/bin/bash
 ## functions
 ## - slack.sh function
-## version 0.1.0 - post testing integration
+## version 0.1.1 - export sources to header, etc.
 ## to do:
 ## + migrate to sh2
 ## ++ error
@@ -186,15 +186,18 @@ alias command-loop='
  done
 '
 ##################################################
-. $( find $( dirname ${0} ) -name aliases.sh )
-. $( find $( dirname ${0} )/*/aliases -name sed.sh )
-. $( find $( dirname ${0} ) -name functions-api.sh )
-. $( find $( dirname ${0} ) -name functions-test.sh )
-. $( find $( dirname ${0} ) -name functions-for-each-channel.sh )
-. $( find $( dirname ${0} ) -name functions-channels.sh )
-. $( find $( dirname ${0} ) -name functions-ts.sh )
-. $( find $( dirname ${0} ) -name functions-entry.sh )
-##################################################
+# version 0.0.3 - case all cecho starting
+setup-channel-ids() {
+ cecho green in ${FUNCNAME}
+ test ! "${channel_ids}" = "all" || {
+  cecho green getting all channel ids..
+  channel_ids=$( 
+   get-channel-ids | sed-strip-double-quotes
+  )
+ }
+ cecho yellow channel_ids: ${channel_ids}
+}
+#-------------------------------------------------
 escape-slash() {
   {
     echo ${@} 
@@ -270,30 +273,6 @@ for-each-channel-get-user-channel-history() {
 # + currently fectching user channel history
 # version 0.0.5 - inherit channel ids
 #-------------------------------------------------
-for-each-channel() { #{ local date_oldest ; date_oldest="${1}" ; local channel_ids ; channel_ids=${@:2} ; { test "${channel_ids}" || { channel_ids="all" ; } ; } ; }
-
- { # debug
-  cecho green in ${FUNCNAME}
-  cecho yellow date_oldest: ${date_oldest}
-  cecho yellow channel_ids: ${channel_ids}
- } 
-
- setup-channel-ids # ${channel_ids}
-
- setup-global-user-channel-history # ${user_channel_history} > temp-user-channel-history
-
- # test empty user channel history
-
- { # convert messages to array
-   sed -e 's/^}/},/' -e '$s/.*/}]/' -e '1s/.*/[{/' ${cache}/temp-user-channel-history  
- } > ${cache}/temp-user-channel-history-copy
- 
- ${FUNCNAME}-convert # (user ids, tss)
-
- ${FUNCNAME}-output ${output_format}
-
-}
-#-------------------------------------------------
 method-slug() { { local candidate_method ; candidate_method="${1}" ; }
  echo ${candidate_method} | sed -e 's/[.]/-/g'
 }
@@ -319,10 +298,10 @@ slack-query() { { local api_method ; api_method="${1}" ; local queary ; query="$
    false
   }
   local input_json
-  input_json="temp-slack-$( method-slug ${api_method} )"
+  input_json="${cache}/temp-slack-$( method-slug ${api_method} )"
   test ! -f "${input_json}" || {
     {
-      jq "${query}" ${input_json}
+      cat ${input_json} | jq "${query}" 
     }
   }
 }
