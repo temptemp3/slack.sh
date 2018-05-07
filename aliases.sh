@@ -1,7 +1,7 @@
 #!/bin/bash
 ## aliases
 ## aliases for slack 
-## version 0.0.1 - initial
+## version 0.0.2 - depreciate setup alias
 ##################################################
 shopt -s expand_aliases
 #-------------------------------------------------
@@ -35,16 +35,6 @@ alias for-each-channel-get-user-channel-history-payload-on-empty-user-channel='
     } 1>&2
     continue
   }
-}
-'
-#-------------------------------------------------
-alias setup-global-user-channel-history='
-{
-  local user_channel_history 
-  user_channel_history=$( 
-   for-each-channel-get-user-channel-history \
-   | tee ${cache}/temp-user-channel-history
-  )
 }
 '
 ##################################################

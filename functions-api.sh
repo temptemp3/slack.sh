@@ -1,16 +1,21 @@
 #!/bin/bash
 ## functions-api
 ## - slack api functions
-## version 0.1.0 - post testing integration
+## version 0.1.1 - get-channel-name recovery from working
 ##################################################
 ## version 0.0.2 - temp in cache
 shopt -s expand_aliases
 alias slack-api-call='
 {
   _() {
-   curl --url "${method_url}?token=${slack_api_token}&${method_query}" --silent $( test ! "${allow_insecure}" = "true" || echo "--insecure" )
+   cecho yellow curl --url "${method_url}?token=${slack_api_token}&${method_query}" --silent $( test ! "${allow_insecure}" = "true" || echo "--insecure" ) 
+   curl --url "${method_url}?token=${slack_api_token}&${method_query}" --silent $( test ! "${allow_insecure}" = "true" || echo "--insecure" ) 
   }
   _ | tee ${cache}/temp-${FUNCNAME}
+  ### WIP
+  #test ! "${DEBUG}" = "true" || {
+  # head ${cache}/temp-${FUNCNAME}
+  #}
 } 
 '
 ## version 0.0.2 - temp in cache
@@ -138,6 +143,24 @@ get-channels-csv() {
   slack-api-query
 }
 #-------------------------------------------------
+get-channel-name() { { local channel_id ; channel_id="${1}" ; }
+  {
+    local api_method
+    api_method="channels.list"
+    local query
+    query="
+.channels[]|
+if .id == \"$( trim ${channel_id} )\"
+then
+.name
+else
+empty
+end
+"
+  }
+  slack-api-query
+}
+#-------------------------------------------------
 get-channel-names() {
   { 
     local api_method
@@ -149,6 +172,7 @@ get-channel-names() {
 }
 #-------------------------------------------------
 get-channel-ids() {
+  cecho green getting channel ids ...
   { 
     local api_method
     api_method="channels.list"

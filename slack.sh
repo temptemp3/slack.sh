@@ -1,9 +1,9 @@
 #!/bin/bash
 ## slack
 ## - slack api
-## version 0.1.0 - post testing integration
+## version 0.1.1 - using header
 ##################################################
-. $( dirname ${0} )/functions.sh
+. $( dirname ${0} )/header.sh $( dirname ${0} )
 ##################################################
 if [ ! ]
 then
