@@ -8,7 +8,7 @@ shopt -s expand_aliases
 alias slack-api-call='
 {
   _() {
-   cecho yellow curl --url "${method_url}?token=${slack_api_token}&${method_query}" --silent $( test ! "${allow_insecure}" = "true" || echo "--insecure" ) 
+   #cecho yellow curl --url "${method_url}?token=${slack_api_token}&${method_query}" --silent $( test ! "${allow_insecure}" = "true" || echo "--insecure" ) 
    curl --url "${method_url}?token=${slack_api_token}&${method_query}" --silent $( test ! "${allow_insecure}" = "true" || echo "--insecure" ) 
   }
   _ | tee ${cache}/temp-${FUNCNAME}
@@ -170,6 +170,8 @@ get-channel-names() {
   }
   slack-api-query
 }
+#-------------------------------------------------
+#get-channel-id() { ... }
 #-------------------------------------------------
 get-channel-ids() {
   cecho green getting channel ids ...
